@@ -298,6 +298,9 @@ SPECIESNUMBER_E <- PRESABS_E %>% dplyr::select("Acorus calamus":"Typha latifolia
 sort(SPECIESNUMBER_E)
 sum(SPECIESNUMBER_E==1)
 
+Lakes_Type_centers <- st_centroid(Lakes_Type)
+Lakes_Type_centers <- cbind(Lakes_Type, st_coordinates(st_centroid(Lakes_Type$geometry)))
+
 usethis::use_data(Makroph_Lake,overwrite = TRUE)
 usethis::use_data(Makroph_LakeSF,overwrite = TRUE)
 usethis::use_data(Makroph_LakeE,overwrite = TRUE)
@@ -306,6 +309,12 @@ usethis::use_data(PRESABS_S,overwrite = TRUE)
 usethis::use_data(PRESABS_E,overwrite = TRUE)
 
 usethis::use_data(result_Chem,overwrite = TRUE)
+
+usethis::use_data(Lakes_Type_centers,overwrite = TRUE)
+usethis::use_data(bavaria_shape,overwrite = TRUE)
+usethis::use_data(lakes_bavaria,overwrite = TRUE)
+usethis::use_data(rivers_important,overwrite = TRUE)
+usethis::use_data(cities,overwrite = TRUE)
 
 
 
@@ -316,21 +325,6 @@ usethis::use_data(result_Chem,overwrite = TRUE)
 ##############################################################################################################################################
 ##############################################################################################################################################
 ###################################################################################
-#CHEM OVERVIEW
-# result_Chem %>% ungroup()%>%select(c(8,10,11,32:42)) %>% summarise_each(mean)
-# C<-cor(result_Chem[c(8,10,11,32:42)])
-# corrplot(C, type = "upper", method = "number", insig = "blank")
-
-
-
-#####################################################################################
-###################################################################################
-
-
-
-
-
-
 ###############################################################################################
 ###############################################################################################
 # MAPS
@@ -338,202 +332,11 @@ usethis::use_data(result_Chem,overwrite = TRUE)
 ###############################################################################################
 # JUST BAVARIA
 
-Lakes_Type_centers <- st_centroid(Lakes_Type)
-Lakes_Type_centers <- cbind(Lakes_Type, st_coordinates(st_centroid(Lakes_Type$geometry)))
-
-# ggplot()+
-#   geom_sf(data = bavaria_shape, size = 1, color = "gray47", fill = "white") +
-#   geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="blue",fill="blue",lwd = 0) +
-#   geom_sf(data = rivers_important, size = 0.1, color = "grey")  +
-#   geom_sf(data = cities, size = 3, color = "black")  +
-#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = 7000.5,check_overlap=T,fontface = "bold")+
-#   annotation_scale(location = "br", width_hint = 0.5) +
-#   coord_sf(xlim = c(4290000,4640000),ylim= c(5250000,5600000))+
-#   xlab("") + ylab("")+
-#   theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
-#         axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank())
-#
-# ggplot(data=Lakes_Type_centers) +
-#   geom_sf(data = bavaria_shape, size = 1, color = "gray47", fill = "white") +
-#   geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="blue",fill="",lwd = 0) +
-#   geom_sf(data = rivers_important, size = 0.1, color = "grey")  +
-#   geom_sf(data = cities, size = 3, color = "black")  +
-#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = 7000.5,check_overlap=T,fontface = "bold")+
-#   annotation_scale(location = "br", width_hint = 0.5) +
-#   coord_sf(xlim = c(4290000,4640000),ylim= c(5250000,5600000))+
-#   geom_sf(aes(), color="red", fill="blue") +
-#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
-#   xlab("") + ylab("")+
-#   theme(legend.position="bottom")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
-#                                         axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank())
-
-#OVERVIEW
-
-all<-ggplot() +
-  geom_sf(data = bavaria_shape, size = 1, color = "gray47", fill = "white") +
-  #geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0) +
-  #geom_sf(data = rivers_important, size = 0.1, color = "grey")  +
-  #annotation_scale(location = "br", width_hint = 0.5) +
-  coord_sf(xlim = c(4290000,4640000),ylim= c(5250000,5600000))+
-  xlab("") + ylab("")+
-  theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
-        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank())
-
-
-box <- ggplot(data.frame()) + geom_blank(mapping = NULL, data = NULL, stat = "identity",
-                                         position = "identity", show.legend = NA, inherit.aes = TRUE) +
-  theme(panel.background = element_rect(fill = "transparent"), # bg of the panel
-        panel.grid.minor = element_blank(), # get rid of minor grid
-        legend.background = element_rect(fill = "transparent"), # get rid of legend bg
-        legend.box.background = element_rect(fill = "transparent"), # get rid of legend panel bg
-        plot.background = element_rect(fill = "transparent",colour = "black",size = 2)
-  )
-
-all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4355000,xmax = 4585000,ymin = 5250000,ymax = 5340000) #Sädn
-all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4400000,xmax = 4563000,ymin = 5411000,ymax = 5480000) #midxlim = c(4400000,4563000),ylim= c(5411000,5485000)
-all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4489000,xmax = 4500000,ymin = 5569000,ymax = 5578000) #north xlim = c(4489000,4500000),ylim= c(5569000,5578000
-all <- all + annotate("text", x = 4470000, y = 5575000, label = "A",size = 8)+
-  annotate("text", x = 4380000, y = 5465000, label = "B",size = 8)+
-  annotate("text", x = 4335000, y = 5325000, label = "C",size = 8)
-
-##SOUTHERN LAKES
-
-lakes_bavaria$SM<-1
-S <- ggplot(data=Lakes_Type_centers) +
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
-  geom_sf(data = lakes_bavaria, aes(color=factor(SM),fill=factor(SM)),lwd = 0, show.legend = T)+
-  geom_sf(data = rivers_important, size = 0.1, color = "lightblue")  +
-  geom_sf(data = cities) +
-  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = 3000.5,check_overlap=T,fontface = "bold")+
-  geom_sf(aes(fill = as.factor(Nat.artifi.x)), color=NA) +
-  scale_fill_manual(values=c("grey","firebrick", "darkblue"),
-                    labels=c("Nicht kartierte Seen","Känstliche Seen","Natärliche Seen"), name="") +
-  #scale_colour_manual(values=c("grey","firebrick", "darkblue"),
-  #                  labels=c("Nicht kartierte Seen","Känstliche Seen","Natärliche Seen"), name="")+
-  annotation_scale(location = "br", width_hint = 0.25) +
-  geom_text_repel(data = subset(Lakes_Type_centers, Region.x=="Alpine"),
-                  mapping=aes(x=X, y=Y,label=paste(SEE_NAME,"-",YEAR),color=Nat.artifi.x),
-                  size=4, box.padding = unit(0.5, "lines"), segment.color="black",show.legend  = F)+
-
-  scale_colour_manual(values = c("grey","firebrick", "darkblue"),guide=FALSE)+
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
-  coord_sf(xlim = c(4355000,4585000),ylim= c(5250000,5340000)) +
-  xlab("") + ylab("")+
-  theme(legend.position="bottom")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
-                                        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
-                                        panel.border = element_rect(colour = "black", fill=NA, size=2))
-
-M <- ggplot(data=Lakes_Type_centers)  +
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white")+
-  geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0)+
-  geom_sf(data = rivers_important, size = 0.1, color = "lightblue")  +
-  geom_sf(data = cities) +
-  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = -3000.5,check_overlap=T,fontface = "bold")+
-  geom_sf(aes(fill = as.factor(Nat.artifi.x)), color=NA) +
-  scale_fill_manual(values=c("firebrick", "darkblue"),
-                    labels=c("Känstliche Seen","Natärliche Seen"),
-                    name="") +
-  annotation_scale(location = "br", width_hint = 0.25) +
-  geom_text_repel(data = subset(Lakes_Type_centers, Region.x=="Low mountain"),
-                  mapping=aes(x=X, y=Y,label=paste(SEE_NAME,"-",YEAR),color=Nat.artifi.x),
-                  size=4, box.padding = unit(0.5, "lines"), segment.color="black")+
-  scale_colour_manual(values = c("firebrick", "darkblue","grey"))+
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
-  coord_sf(xlim = c(4400000,4563000),ylim= c(5411000,5485000)) +
-  xlab("") + ylab("")+
-  theme(legend.position="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
-                                        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
-                                        panel.border = element_rect(colour = "black", fill=NA, size=2))
-
-N <- ggplot(data=Lakes_Type_centers) +
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
-  geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0)+
-  geom_sf(data = cities) +
-  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = -500.5,check_overlap=T,fontface = "bold")+
-  geom_sf(data = rivers_important, size = 0.1, color = "lightblue")  +
-  geom_sf(aes(fill = as.factor(Nat.artifi.x)), color=NA, fill="firebrick") +
-  scale_fill_manual(values=c("firebricke", "darkblue"),
-                    labels=c("Känstliche Seen","Natärliche Seen"),
-                    name="") +
-  annotation_scale(location = "br", width_hint = 0.25) +
-  geom_sf_text(aes(label = paste(SEE_NAME,"-",YEAR)), color = "firebrick",
-               nudge_x = 3000, nudge_y = 000,
-               label.size = 0.01, check_overlap=F) +
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
-  coord_sf(xlim = c(4491000,4500000),ylim= c(5568000,5579000)) + #4480000,xmax = 4520000,ymin = 5545000,ymax = 5580000
-  xlab("") + ylab("")+ theme(legend.position="none")+
-  #theme(legend.position="bottom")+
-  theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
-                                        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
-                                        panel.border = element_rect(colour = "black", fill=NA, size=2))
-
-
-Nnew<- ggarrange(all,N,M,ncol=3, common.legend=F, widths = c(1,0.8, 2) ,
-                 labels = c("Bayern", "A", "B"),label.x = 0.07, label.y = 0.95)
-ggarrange(Nnew, S,nrow = 2,common.legend=T, legend="bottom", heights = c(1.2,2),
-          labels = c("","C"),label.x = 0.03, label.y = 0.95)
 
 
 
-## Gamma richness map
-
-x1<-ggplot(data = subset(Lakes_Type_centers, Region.x=="Alpine") , aes(geometry=geometry)) +
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
-  geom_sf(data = rivers_important, size = 0.05, color = "lightblue")  +
-  geom_sf(data=cities)+
-  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.5,nudge_y = -3000.5,check_overlap=F) +
-  geom_sf(data = subset(Lakes_Type_centers, Region.x=="Alpine"),aes(fill = GAMMA), color=NA) +
-
-  scale_fill_gradient(low = "orange", high = "darkgreen", name="Gesamtartenanzahl",limits = c(0,38))+
-  annotation_scale(location = "br", width_hint = 0.25) +
-  geom_text_repel(mapping=aes(x=X, y=Y,label=paste(GAMMA_SF,"|",GAMMA_E),color="black"),
-                  size=4, box.padding = unit(0.5, "lines"),color="black")+
-
-  coord_sf(xlim = c(4355000,4585000),ylim= c(5250000,5340000), expand = FALSE)+
-  xlab("") + ylab("")+
-  theme(legend.position="none",axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
-        panel.border = element_rect(colour = "black", fill=NA, size=1))
 
 
-x2<-ggplot(data = subset(Lakes_Type_centers, Region.x=="Low mountain") , aes(geometry=geometry)) +
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
-  geom_sf(data = rivers_important, size = 0.05, color = "lightblue")  +
-  geom_sf(data=cities)+
-  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.5,nudge_y = -3000.5,check_overlap=F) +
-  geom_sf(aes(fill = GAMMA), color=NA) +
-
-  scale_fill_gradient(low = "orange", high = "darkgreen", name="Gesamtartenanzahl",limits = c(0,38))+
-  annotation_scale(location = "br", width_hint = 0.25) +
-  geom_text_repel(mapping=aes(x=X, y=Y,label=paste(GAMMA_SF,"|",GAMMA_E),color="black"),
-                  size=4, box.padding = unit(0.5, "lines"),color="black")+
-  #scale_color_continuous(low = "white", high = "purple", name="N species",limits = c(0,36))+
-  coord_sf(xlim = c(4400000,4563000),ylim= c(5411000,5485000)) +
-  xlab("") + ylab("")+
-  theme(legend.position="none",axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
-        panel.border = element_rect(colour = "black", fill=NA, size=1))
-
-x3<-ggplot(data = subset(Lakes_Type_centers, Region.x=="Low mountain") , aes(geometry=geometry)) +
-  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
-  geom_sf(data = rivers_important, size = 0.05, color = "lightblue")  +
-  geom_sf(data=cities)+
-  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.5,nudge_y = -500.5,check_overlap=F) +
-  geom_sf(aes(fill = GAMMA), color=NA) +
-
-  scale_fill_gradient(low = "orange", high = "darkgreen", name="Gesamt- \nartanzahl",limits = c(0,38))+
-  annotation_scale(location = "br", width_hint = 0.25) +
-  geom_text_repel(mapping=aes(x=X, y=Y,label=paste(GAMMA_SF,"|",GAMMA_E),color="black"),
-                  size=4, box.padding = unit(0.5, "lines"),color="black")+
-
-  coord_sf(xlim = c(4489000,4500000),ylim= c(5569000,5578000)) +
-  xlab("") + ylab("")+
-  theme(legend.position="none",axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
-        panel.border = element_rect(colour = "black", fill=NA, size=1))
-
-
-XALL <- ggarrange(ggarrange(x3,x2,ncol=2,widths = c(1, 2), labels =c("A","B"), common.legend=T,legend="right"),x1,nrow=2,labels =c("","C"),
-                    heights =  c(1.5, 2) )
-XALL <- annotate_figure(XALL,top ="Anzahl submerse Arten | Anzahl emerse Arten")
-XALL
 
 
 
