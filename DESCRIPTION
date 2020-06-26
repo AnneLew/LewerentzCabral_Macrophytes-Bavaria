@@ -10,3 +10,5 @@ Encoding: UTF-8
 LazyData: true
 Depends: 
     R (>= 2.10)
+URL: https://github.com/AnneLew/BavarianMacrophytesFGG
+BugReports: https://github.com/AnneLew/BavarianMacrophytesFGG/issues

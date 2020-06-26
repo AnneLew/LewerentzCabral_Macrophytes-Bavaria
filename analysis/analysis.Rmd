@@ -162,6 +162,7 @@ summary.gam(gam_r_allE)
 
 
 library(voxel)
+
 library(gridExtra)
 vars <- c("Flaeche_log", "P_log")
 map(vars, function(x){
