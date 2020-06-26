@@ -1,0 +1,186 @@
+---
+title: "analysis"
+author: "Anne Lew"
+date: "26 Juni 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load packages
+
+```{r cars}
+#Analysis
+library(tidyverse)
+
+library(gamm4) #gamm analysis
+library(BiodiversityR) #rankabund plot
+#library(vegan) #for NMDS
+
+#Plots
+# library(ggpmisc) 
+library(ggpubr)  #customizing 'ggplot2'
+library(ggrepel) #adds text directly to the plot
+library(directlabels) #add direct labels to a plot, and hide the color legend
+library(corrplot) #correlation plot
+
+#Maps
+library(raster) #maps
+library(ggspatial) #maps
+library(sf) #maps
+```
+
+## Results
+
+You can also embed plots, for example:
+
+```{r pressure}
+############## Rank-Abundance Plot
+par(mfrow=c(2,3))
+rankabunplot(rankabundance(PRESABS[3:96]), main="all", specnames=c(1,2,3),scale='proportion')
+rankabunplot(rankabundance(PRESABS_S[3:73]), main="submerse Arten", specnames=c(1,2,3),scale='proportion')
+rankabunplot(rankabundance(PRESABS_E[3:36]), main="emerse Arten", specnames=c(1,2,3),scale='proportion')
+rankabunplot(rankabundance(Makroph_Lake[3:96]), main="all", specnames=c(1,2,3),scale='proportion')
+rankabunplot(rankabundance(Makroph_LakeSF[3:73]), main="submerse Arten", specnames=c(1,2,3),scale='proportion')
+rankabunplot(rankabundance(Makroph_LakeE[3:36]), main="emerse Arten", specnames=c(1,2,3),scale='proportion')
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Chem overview
+```{r Chem overview}
+mean(result_Chem$Area_ha)
+median(result_Chem$Area_ha)
+min(result_Chem$Area_ha)
+max(result_Chem$Area_ha)
+
+median(result_Chem$maxDepth_m)
+median(result_Chem$Altitude_masl)
+median(result_Chem$Chloride)
+median(result_Chem$Conductivity)
+median(result_Chem$N_tot)
+median(result_Chem$NH4N)
+median(result_Chem$NO3N)
+median(result_Chem$O2_diss)
+median(result_Chem$P_tot)
+median(result_Chem$pH)
+median(result_Chem$SiO2)
+median(result_Chem$Temp)
+median(result_Chem$Transparency)
+
+median(result_Chem$GAMMA_SF)
+median(result_Chem$GAMMA_E)
+```
+
+
+## Correlation plot
+```{r}
+#Log Transformed
+C<-cor(result_Chem[c(43:56)])
+res2 <- cor.mtest(result_Chem[c(43:56)], conf.level = .95)
+
+col3 <- colorRampPalette(c("darkgoldenrod3", "white", "darkcyan")) 
+corrplot(C, type = "upper", method = "number", insig = "blank", order = "AOE", col = col3(100),tl.col="black") 
+
+#library(GGally)
+#ggcorr(result_Chem[c(43:56)], nbreaks=8, palette='RdGy', label=TRUE, label_size=5, label_color='white')
+
+library(ggcorrplot)
+ggcorrplot(cor(result_Chem[c(43:56)]), p.mat = cor_pmat(result_Chem[c(43:56)]), #hc.order=TRUE, 
+           type='upper',lab = TRUE, insig = "blank")
+
+# library(corrr)
+# result_Chem[c(43:56)] %>% correlate() %>% network_plot(min_cor = 0.5)
+
+#ohne Transp; ohne Ntot
+# C<-cor(result_Chem[c(47,48,49,50,51,53:59)])
+# corrplot(C, type = "upper", method = "number", insig = "blank") 
+
+### Not >0.7: N_tot_log, Transparency
+```
+
+## GAM
+```{r}
+gam_r_allS <- gam(GAMMA_SF ~ s(Fläche_log, bs = 'cr', k = 3)+s(P_log, bs = 'cr', k = 3),
+                            data=result_Chem, method="REML")
+#gam.check(gam_r_allS)
+#print(gam_r_allS)
+#plot(gam_r_allS)
+summary.gam(gam_r_allS)
+#gam_r_allS$aic
+#gam_r_allS$reml.scale
+
+# par(mfrow=c(1,2))
+# 
+# GAM1<-plot(gam_r_allS,residuals=TRUE, main = "Submerse Artenvielfalt", shade = T,seWithMean=T)
+# dev.off()
+#vis.gam(gam_r_allS,plot.type="contour",color="bw")
+######################
+
+gam_r_allE <- gam(GAMMA_E ~ s(Chlorid_log, bs = 'cr', k = 3)+s(SiO2_log, bs = 'cr', k = 3)+s(NO3_log, bs = 'cr', k = 3)+s(NH4_log, bs = 'cr', k = 3)+s(O2_log, bs = 'cr', k = 3)+s(LF_log, bs = 'cr', k = 3), #s(Area_ha_log)+
+                    data=result_Chem,method="REML")
+
+#gam.check(gam_r_allE)
+
+#print(gam_r_allE)
+#plot(gam_r_allE)
+summary.gam(gam_r_allE)
+
+#gam_r_allE$aic
+
+# gam_r_allE <- gam(GAMMA_E ~ s(Area_ha_log, bs = 'cr', k = 3)+s(maxDepth_log, bs = 'cr', k = 3)+s(Altitude_masl_log, bs = 'cr', k = 3)+
+#                     
+#                     s(Chloride_log, bs = 'cr', k = 3)+s(Conductivity_log, bs = 'cr', k = 3)+s(N_tot_log, bs = 'cr', k = 3)+
+#                     s(SiO2_log, bs = 'cr', k = 3)+s(NO3N_log, bs = 'cr', k = 3)+s(NH4N_log, bs = 'cr', k = 3)+
+#                     s(O2_diss_log, bs = 'cr', k = 3)+s(P_tot_log, bs = 'cr', k = 3)+s(pH_log, bs = 'cr', k = 3)+
+#                     s(Temp_log, bs = 'cr', k = 3)+s(Transparency_log, bs = 'cr', k = 3), #s(Area_ha_log)+
+#                   data=result_Chem,method="REML")
+
+
+
+# par(mfrow=c(2,3))
+# GAM2<-plot(gam_r_allE,residuals=TRUE, main = "Emerse Artenvielfalt", shade = T,seWithMean=T)
+
+
+
+#print(gam_r_allE)
+#vis.gam(gam_r_allE,ticktype="detailed",color="heat",theta=-35, view=c("NO3N_log","Conductivity_log"),cond=list(x0=0.75))
+#dev.off()
+#vis.gam(gam_r_allE,view=c("NO3N_log","Conductivity_log"),plot.type="contour",color="bw")
+
+
+#BOTH
+# par(mfrow=c(1,2))
+# GAM1<-plot(gam_r_allS,residuals=TRUE, shade = T,seWithMean=T) #main = "Submerse Artenvielfalt", 
+# 
+# par(mfrow=c(1,6))
+# GAM2<-plot(gam_r_allE,residuals=TRUE, shade = T,seWithMean=T)
+
+
+
+library(voxel)
+library(gridExtra)
+vars <- c("Flaeche_log", "P_log")
+map(vars, function(x){
+  p <- plotGAM(gam_r_allS, smooth.cov = x)+
+    geom_point(data = result_Chem, aes_string(y = "GAMMA_SF", x = x ), alpha = 0.2) +
+    geom_rug(data = result_Chem, aes_string(y = "GAMMA_SF", x = x ), alpha = 0.2) #plot customization goes here
+  g <- ggplotGrob(p)
+}) %>%
+{grid.arrange(grobs = (.), ncol = 2, nrow = 1)}
+
+vars <- c("Chloride_log", "SiO2_log", "NO3N_log", "NH4N_log", "O2_diss_log", "Conductivity_log")
+map(vars, function(x){
+  p <- plotGAM(gam_r_allE, smooth.cov = x)+
+    geom_point(data = result_Chem, aes_string(y = "GAMMA_E", x = x ), alpha = 0.2) +
+    geom_rug(data = result_Chem, aes_string(y = "GAMMA_E", x = x ), alpha = 0.2) #plot customization goes here
+  g <- ggplotGrob(p)
+}) %>%
+{grid.arrange(grobs = (.), ncol = 6, nrow = 1)}
+
+
+```
+
