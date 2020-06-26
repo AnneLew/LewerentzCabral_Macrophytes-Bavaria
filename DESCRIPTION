@@ -1,0 +1,10 @@
+Package: BavairanMacrophytesFGG
+Type: Package
+Title: Analysis of bavarian macrophytes data for FGG article
+Version: 0.1.0
+Author: Anne Lewerentz
+Maintainer: The package maintainer <anne.lewerentz@uni-wuerzburg.de>
+Description: Analysis of bavarian macrophytes data for FGG article - comparing submerged and emergent species
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
