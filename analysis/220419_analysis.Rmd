@@ -1,0 +1,665 @@
+---
+title: "analysis"
+author: "Anne Lew"
+date: "26 Juni 2020"
+output: 
+  html_document:
+      toc: true
+      number_sections: true
+      df_print: paged
+      code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE}
+library(BavarianMacrophytesFGG)
+library(tidyverse)
+
+#Analysis
+library(gamm4) #gamm analysis
+library(BiodiversityR) #rankabund plot
+
+#Plots
+library(ggpubr)  #customizing 'ggplot2'
+library(ggrepel) #adds text directly to the plot
+library(directlabels) #add direct labels to a plot, and hide the color legend
+library(corrplot) #correlation plot
+
+#Maps
+library(raster) #maps
+library(ggspatial) #maps
+library(sf) #maps
+
+
+## ggplot theme updates
+source("C:/Users/anl85ck/Desktop/PhD/5_Macrophytes-Bavaria/3_WFD-Project/02_Themes/tidy_white_anne.R")
+```
+
+
+
+
+# Methods
+## Chem overview
+```{r Chem overview, echo=FALSE}
+mean(result_Chem$Area_ha)
+median(result_Chem$Area_ha)
+min(result_Chem$Area_ha)
+max(result_Chem$Area_ha)
+
+median(result_Chem$maxDepth_m)
+median(result_Chem$Altitude_masl)
+median(result_Chem$Chloride)
+median(result_Chem$Conductivity)
+median(result_Chem$N_tot)
+median(result_Chem$NH4N)
+median(result_Chem$NO3N)
+median(result_Chem$O2_diss)
+median(result_Chem$P_tot)
+median(result_Chem$pH)
+median(result_Chem$SiO2)
+median(result_Chem$Temp)
+median(result_Chem$Transparency)
+
+median(result_Chem$GAMMA_SF)
+median(result_Chem$GAMMA_E)
+```
+
+## Correlation plot
+```{r}
+#Log Transformed
+#C<-cor(result_Chem[c(43:56)])
+#res2 <- cor.mtest(result_Chem[c(43:56)], conf.level = .95)
+
+#col3 <- colorRampPalette(c("darkgoldenrod3", "white", "darkcyan")) 
+#corrplot(C, type = "upper", method = "number", insig = "blank", order = "AOE", col = col3(100),tl.col="black") 
+
+#library(GGally)
+#ggcorr(result_Chem[c(43:56)], nbreaks=8, palette='RdGy', label=TRUE, label_size=5, label_color='white')
+
+library(ggcorrplot)
+Abb2<-ggcorrplot(cor(result_Chem[c(43:56)]), p.mat = cor_pmat(result_Chem[c(43:56)]), #hc.order=TRUE, 
+           type='upper',lab = TRUE, insig = "blank")
+Abb2
+#pdf(file="Abb2.pdf",width=6.28)
+Abb2
+#dev.off()
+
+
+# library(corrr)
+# result_Chem[c(43:56)] %>% correlate() %>% network_plot(min_cor = 0.5)
+
+#ohne Transp; ohne Ntot
+# C<-cor(result_Chem[c(47,48,49,50,51,53:59)])
+# corrplot(C, type = "upper", method = "number", insig = "blank") 
+
+### Not >0.7: N_tot_log, Transparency
+```
+
+
+# Results
+
+## List of species
+
+```{r}
+species_list <- PRESABS %>%
+  summarise_if(is.numeric, sum, na.rm = TRUE) %>% gather("species","value",2:95)
+```
+
+
+## Summary species richness
+
+
+Total number of submerged species 
+```{r}
+PRESABS_S %>% dplyr::select(`Alisma plantago-aquatica`:"Zannichellia palustris") %>% ncol()
+
+```
+Total number of emerged species 
+```{r}
+PRESABS_E[3:36] %>% ncol()
+```
+List with all species
+```{r}
+spec_sub<- PRESABS_S %>% dplyr::select(`Alisma plantago-aquatica`:"Zannichellia palustris") %>% gather("species","value",1:71) %>% dplyr::select(species) %>% unique()
+
+spec_ef<- PRESABS_E[3:36]%>% gather("species","value",1:34) %>% dplyr::select(species) %>% unique()
+
+spec <- rbind(spec_sub,spec_ef) %>% unique()
+```
+
+total number of species
+```{r}
+spec %>% nrow()
+```
+
+Number of Erscheinungsform
+```{r}
+spec_ana<-spec %>% left_join(species_info, by=c("species"="Taxon"))
+
+spec_ana %>% group_by(Erscheinungsform) %>%
+  summarise(nSpec=n())
+```
+
+Species richness mean
+```{r}
+Lakes_Type_centers %>% summarise(
+  GAMMAm=mean(GAMMA),
+  GAMMAsd=sd(GAMMA),
+  GAMMA_SFm=mean(GAMMA_SF),
+  GAMMA_SFsd=sd(GAMMA_SF),
+  GAMMA_Em=mean(GAMMA_E),
+  GAMMA_Esd=sd(GAMMA_E))
+```
+
+Species richness in natural vs artificial lakes 
+```{r}
+#Makroph_Lake
+Lakes_Type_centers %>% group_by(Nat.artifi) %>% summarise(
+  GAMMAm=mean(GAMMA),
+  GAMMAsd=sd(GAMMA),
+  GAMMA_SFm=mean(GAMMA_SF),
+  GAMMA_SFsd=sd(GAMMA_SF),
+  GAMMA_Em=mean(GAMMA_E),
+  GAMMA_Esd=sd(GAMMA_E))
+```
+Number of species in Natural and Artificial lakes
+```{r}
+NatArti<-Makroph_Lake %>% left_join(result_Chem, by="Gewässer") %>% 
+  dplyr::select(-GAMMA.x,-GAMMA.y) %>%
+  group_by(Nat.artifi) %>% summarise_if(is.numeric, sum) #%>%
+
+  
+  specnumber(NatArti[3:96])
+```
+
+Emergent
+```{r}
+NatArtiE<-Makroph_LakeE %>% left_join(result_Chem, by="Gewässer") %>% 
+  #dplyr::select(-GAMMA.x,-GAMMA.y) %>%
+  group_by(Nat.artifi) %>% summarise_if(is.numeric, sum) #%>%
+
+  
+specnumber(NatArtiE[3:36])
+```
+
+Submerged
+```{r}
+NatArtiS<-Makroph_LakeSF %>% left_join(result_Chem, by="Gewässer") %>% 
+  #dplyr::select(-GAMMA.x,-GAMMA.y) %>%
+  group_by(Nat.artifi) %>% summarise_if(is.numeric, sum) #%>%
+
+  
+specnumber(NatArtiS[3:73])
+```
+
+
+## Overview Map
+```{r}
+# #OVERVIEW
+# 
+# all<-ggplot() +
+#   geom_sf(data = bavaria_shape, size = 1, color = "gray47", fill = "white") +
+#   #geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0) +
+#   #geom_sf(data = rivers_important, size = 0.1, color = "grey")  +
+#   #annotation_scale(location = "br", width_hint = 0.5) +
+#   coord_sf(xlim = c(4290000,4640000),ylim= c(5250000,5600000))+
+#   xlab("") + ylab("")+
+#   theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+#         axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank())
+# 
+# 
+# box <- ggplot(data.frame()) + geom_blank(mapping = NULL, data = NULL, stat = "identity",
+#                                          position = "identity", show.legend = NA, inherit.aes = TRUE) +
+#   theme(panel.background = element_rect(fill = "transparent"), # bg of the panel
+#         panel.grid.minor = element_blank(), # get rid of minor grid
+#         legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+#         legend.box.background = element_rect(fill = "transparent"), # get rid of legend panel bg
+#         plot.background = element_rect(fill = "transparent",colour = "black",size = 2)
+#   )
+# 
+# all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4355000,xmax = 4585000,ymin = 5250000,ymax = 5340000) #Sädn
+# all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4400000,xmax = 4563000,ymin = 5411000,ymax = 5480000) #midxlim = c(4400000,4563000),ylim= c(5411000,5485000)
+# all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4489000,xmax = 4500000,ymin = 5569000,ymax = 5578000) #north xlim = c(4489000,4500000),ylim= c(5569000,5578000
+# all <- all + annotate("text", x = 4470000, y = 5575000, label = "A",size = 8)+
+#   annotate("text", x = 4380000, y = 5465000, label = "B",size = 8)+
+#   annotate("text", x = 4335000, y = 5325000, label = "C",size = 8)
+# 
+# ##SOUTHERN LAKES
+# 
+# lakes_bavaria$SM<-1
+# S <- ggplot(data=Lakes_Type_centers) +
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
+#   geom_sf(data = lakes_bavaria, aes(color=factor(SM),fill=factor(SM)),lwd = 0, show.legend = T)+
+#   geom_sf(data = rivers_important, size = 0.1, color = "lightblue")  +
+#   geom_sf(data = cities) +
+#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = 3000.5,check_overlap=T,fontface = "bold")+
+#   geom_sf(aes(fill = as.factor(Nat.artifi)), color=NA) +
+#   scale_fill_manual(values=c("grey","firebrick", "darkblue"),
+#                     labels=c("Nicht kartierte Seen","Künstliche Seen","Natürliche Seen"), name="") +
+#   #scale_colour_manual(values=c("grey","firebrick", "darkblue"),
+#   #                  labels=c("Nicht kartierte Seen","Künstliche Seen","Natürliche Seen"), name="")+
+#   annotation_scale(location = "br", width_hint = 0.25) +
+#   geom_text_repel(data = subset(Lakes_Type_centers, Region=="Alpine"),
+#                   mapping=aes(x=X, y=Y,label=paste(SEE_NAME,"-",YEAR),color=Nat.artifi),
+#                   size=4, box.padding = unit(0.5, "lines"), segment.color="black",show.legend  = F)+
+# 
+#   scale_colour_manual(values = c("grey","firebrick", "darkblue"),guide=FALSE)+
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
+#   coord_sf(xlim = c(4355000,4585000),ylim= c(5250000,5340000)) +
+#   xlab("") + ylab("")+
+#   theme(legend.position="bottom")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+#                                         axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+#                                         panel.border = element_rect(colour = "black", fill=NA, size=2))
+# 
+# M <- ggplot(data=Lakes_Type_centers)  +
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white")+
+#   geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0)+
+#   geom_sf(data = rivers_important, size = 0.1, color = "lightblue")  +
+#   geom_sf(data = cities) +
+#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = -3000.5,check_overlap=T,fontface = "bold")+
+#   geom_sf(aes(fill = as.factor(Nat.artifi)), color=NA) +
+#   scale_fill_manual(values=c("firebrick", "darkblue"),
+#                     labels=c("Künstliche Seen","Natürliche Seen"),
+#                     name="") +
+#   annotation_scale(location = "br", width_hint = 0.25) +
+#   geom_text_repel(data = subset(Lakes_Type_centers, Region=="Low mountain"),
+#                   mapping=aes(x=X, y=Y,label=paste(SEE_NAME,"-",YEAR),color=Nat.artifi),
+#                   size=4, box.padding = unit(0.5, "lines"), segment.color="black")+
+#   scale_colour_manual(values = c("firebrick", "darkblue","grey"))+
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
+#   coord_sf(xlim = c(4400000,4563000),ylim= c(5411000,5485000)) +
+#   xlab("") + ylab("")+
+#   theme(legend.position="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+#                                         axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+#                                         panel.border = element_rect(colour = "black", fill=NA, size=2))
+# 
+# N <- ggplot(data=Lakes_Type_centers) +
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
+#   geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0)+
+#   geom_sf(data = cities) +
+#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = -500.5,check_overlap=T,fontface = "bold")+
+#   geom_sf(data = rivers_important, size = 0.1, color = "lightblue")  +
+#   geom_sf(aes(fill = as.factor(Nat.artifi)), color=NA, fill="firebrick") +
+#   scale_fill_manual(values=c("firebricke", "darkblue"),
+#                     labels=c("Künstliche Seen","Natürliche Seen"),
+#                     name="") +
+#   annotation_scale(location = "br", width_hint = 0.25) +
+#   geom_sf_text(aes(label = paste(SEE_NAME,"-",YEAR)), color = "firebrick",
+#                nudge_x = 3000, nudge_y = 000,
+#                label.size = 0.01, check_overlap=F) +
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
+#   coord_sf(xlim = c(4491000,4500000),ylim= c(5568000,5579000)) + #4480000,xmax = 4520000,ymin = 5545000,ymax = 5580000
+#   xlab("") + ylab("")+ theme(legend.position="none")+
+#   #theme(legend.position="bottom")+
+#   theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+#                                         axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+#                                         panel.border = element_rect(colour = "black", fill=NA, size=2))
+# 
+# 
+# Nnew<- ggarrange(all,N,M,ncol=3, common.legend=F, widths = c(1,0.8, 2) ,
+#                  labels = c("Bayern", "A", "B"),label.x = 0.07, label.y = 0.95)
+# ggarrange(Nnew, S,nrow = 2,common.legend=T, legend="bottom", heights = c(1.2,2),
+#           labels = c("","C"),label.x = 0.03, label.y = 0.95)
+
+```
+
+## New map with numbers
+```{r }
+all<-ggplot() +
+  geom_sf(data = bavaria_shape, size = 1, color = "gray47", fill = "white") +
+  coord_sf(xlim = c(4290000,4640000),ylim= c(5250000,5600000))+
+  xlab("") + ylab("")+
+  theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank())
+
+
+box <- ggplot(data.frame()) + geom_blank(mapping = NULL, data = NULL, stat = "identity",
+                                         position = "identity", show.legend = NA, inherit.aes = TRUE) +
+  theme(panel.background = element_rect(fill = "transparent"), # bg of the panel
+        panel.grid.minor = element_blank(), # get rid of minor grid
+        legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+        legend.box.background = element_rect(fill = "transparent"), # get rid of legend panel bg
+        plot.background = element_rect(fill = "transparent",colour = "forestgreen",size = 2)
+  )
+
+all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4355000,xmax = 4585000,ymin = 5250000,ymax = 5340000) #
+all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4400000,xmax = 4563000,ymin = 5411000,ymax = 5480000) #
+all <- all + annotation_custom(grob = ggplotGrob(box),xmin = 4489000,xmax = 4500000,ymin = 5569000,ymax = 5578000) #
+all <- all + annotate("text", x = 4470000, y = 5575000, label = "A",size = 8)+
+  annotate("text", x = 4380000, y = 5465000, label = "B",size = 8)+
+  annotate("text", x = 4335000, y = 5325000, label = "C",size = 8)
+
+##SOUTHERN LAKES
+
+lakes_bavaria$SM<-1
+S <- ggplot(data=Lakes_Type_centers) +
+  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
+  geom_sf(data = lakes_bavaria, aes(color=factor(SM),fill=factor(SM)),lwd = 0, show.legend = T)+
+  geom_sf(data = rivers_important, size = 0.5, color = "lightblue")  +
+  geom_sf(data = cities) +
+  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = 3000.5,check_overlap=T,fontface = "bold")+
+  geom_sf(aes(fill = as.factor(Nat.artifi)), color=NA) +
+  scale_fill_manual(values=c("grey","firebrick", "darkblue"),
+                    labels=c("Nicht kartierte Seen","Künstliche Seen","Natürliche Seen"), name="") +
+  annotation_scale(location = "br", width_hint = 0.25) +
+  geom_text_repel(data = subset(Lakes_Type_centers, Region=="Alpine"),
+                  mapping=aes(x=X, y=Y,label=ID,color=Nat.artifi),
+                  size=4, box.padding = unit(0.5, "lines"), segment.color="black",show.legend  = F)+
+  scale_colour_manual(values = c("grey","firebrick", "darkblue"),guide=FALSE)+
+  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
+  coord_sf(xlim = c(4355000,4585000),ylim= c(5250000,5340000)) +
+  xlab("") + ylab("")+
+  theme(legend.position="bottom")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+                                        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+                                        panel.border = element_rect(colour = "forestgreen", fill=NA, size=2))
+
+M <- ggplot(data=Lakes_Type_centers)  +
+  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white")+
+  geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0)+
+  geom_sf(data = rivers_important, size = 0.5, color = "lightblue")  +
+  geom_sf(data = cities) +
+  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = -3000.5,check_overlap=T,fontface = "bold")+
+  geom_sf(aes(fill = as.factor(Nat.artifi)), color=NA) +
+  scale_fill_manual(values=c("firebrick", "darkblue"),
+                    labels=c("Künstliche Seen","Natürliche Seen"),
+                    name="") +
+  annotation_scale(location = "br", width_hint = 0.25) +
+  geom_text_repel(data = subset(Lakes_Type_centers, Region=="Low mountain"),
+                  mapping=aes(x=X, y=Y,label=ID,color=Nat.artifi),
+                  size=4, box.padding = unit(0.5, "lines"), segment.color="black")+
+  scale_colour_manual(values = c("firebrick", "darkblue","grey"))+
+  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
+  coord_sf(xlim = c(4400000,4563000),ylim= c(5411000,5485000)) +
+  xlab("") + ylab("")+
+  theme(legend.position="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+                                        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+                                        panel.border = element_rect(colour = "forestgreen", fill=NA, size=2))
+
+N <- ggplot(data=Lakes_Type_centers) +
+  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
+  geom_sf(data = lakes_bavaria, aes(colour="SEE"),  col="grey",fill="grey",lwd = 0)+
+  geom_sf(data = cities) +
+  geom_sf_text(data=cities, aes(label = name), nudge_x = 0.0,nudge_y = -500.5,check_overlap=T,fontface = "bold")+
+  geom_sf(data = rivers_important, size = 0.5, color = "lightblue")  +
+  geom_sf(aes(fill = as.factor(Nat.artifi)), color=NA, fill="firebrick") +
+  scale_fill_manual(values=c("firebricke", "darkblue"),
+                    labels=c("Künstliche Seen","Natürliche Seen"),
+                    name="") +
+  annotation_scale(location = "br", width_hint = 0.25) +
+  geom_sf_text(aes(label = ID), color = "firebrick",
+               nudge_x = 3000, nudge_y = 000,
+               label.size = 0.01, check_overlap=F) +
+  geom_sf(data = bavaria_shape, size = 1, color = "black", fill = NA)+
+  coord_sf(xlim = c(4491000,4500000),ylim= c(5568000,5579000)) + #4480000,xmax = 4520000,ymin = 5545000,ymax = 5580000
+  xlab("") + ylab("")+ theme(legend.position="none")+
+  #theme(legend.position="bottom")+
+  theme(axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+                                        axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+                                        panel.border = element_rect(colour = "forestgreen", fill=NA, size=2))
+
+
+Nnew<- ggarrange(all,N,M,ncol=3, common.legend=F, widths = c(1,0.8, 2) ,
+                 labels = c("Bayern", "A", "B"),label.x = 0.07, label.y = 0.95)
+Abb3<-ggarrange(Nnew, S,nrow = 2,common.legend=T, legend="bottom", heights = c(1.2,2),
+          labels = c("","C"),label.x = 0.03, label.y = 0.95)
+Abb3
+#pdf(file="Abb3.pdf",width=6.28)
+Abb3
+#dev.off()
+
+```
+
+## Result table
+
+```{r}
+# species_info %>% filter(!is.na(S)) %>% nrow()
+# species_info %>% filter(!is.na(Em)) %>% nrow()
+# species_info %>% filter(!is.na(`F-SB`)) %>% nrow()
+```
+
+
+
+
+```{r}
+Tab2<-Lakes_Type_centers %>% dplyr::select(ID, SEE_NAME, YEAR, GAMMA_SF, GAMMA_E, GAMMA) %>%
+  st_set_geometry(NULL)
+Tab2
+#write.csv(Tab2,"Tab2.csv", row.names = T)
+```
+
+
+
+
+## Gamma richness map
+
+```{r}
+# ## Gamma richness map
+# 
+# x1<-ggplot(data = subset(Lakes_Type_centers, Region.x=="Alpine") , aes(geometry=geometry)) +
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
+#   geom_sf(data = rivers_important, size = 0.05, color = "lightblue")  +
+#   geom_sf(data=cities)+
+#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.5,nudge_y = -3000.5,check_overlap=F) +
+#   geom_sf(data = subset(Lakes_Type_centers, Region.x=="Alpine"),aes(fill = GAMMA), color=NA) +
+# 
+#   scale_fill_gradient(low = "orange", high = "darkgreen", name="Gesamtartenanzahl",limits = c(0,38))+
+#   annotation_scale(location = "br", width_hint = 0.25) +
+#   geom_text_repel(mapping=aes(x=X, y=Y,label=paste(GAMMA_SF,"|",GAMMA_E),color="black"),
+#                   size=4, box.padding = unit(0.5, "lines"),color="black")+
+# 
+#   coord_sf(xlim = c(4355000,4585000),ylim= c(5250000,5340000), expand = FALSE)+
+#   xlab("") + ylab("")+
+#   theme(legend.position="none",axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+#         panel.border = element_rect(colour = "black", fill=NA, size=1))
+# 
+# 
+# x2<-ggplot(data = subset(Lakes_Type_centers, Region.x=="Low mountain") , aes(geometry=geometry)) +
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
+#   geom_sf(data = rivers_important, size = 0.05, color = "lightblue")  +
+#   geom_sf(data=cities)+
+#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.5,nudge_y = -3000.5,check_overlap=F) +
+#   geom_sf(aes(fill = GAMMA), color=NA) +
+# 
+#   scale_fill_gradient(low = "orange", high = "darkgreen", name="Gesamtartenanzahl",limits = c(0,38))+
+#   annotation_scale(location = "br", width_hint = 0.25) +
+#   geom_text_repel(mapping=aes(x=X, y=Y,label=paste(GAMMA_SF,"|",GAMMA_E),color="black"),
+#                   size=4, box.padding = unit(0.5, "lines"),color="black")+
+#   #scale_color_continuous(low = "white", high = "purple", name="N species",limits = c(0,36))+
+#   coord_sf(xlim = c(4400000,4563000),ylim= c(5411000,5485000)) +
+#   xlab("") + ylab("")+
+#   theme(legend.position="none",axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+#         panel.border = element_rect(colour = "black", fill=NA, size=1))
+# 
+# x3<-ggplot(data = subset(Lakes_Type_centers, Region.x=="Low mountain") , aes(geometry=geometry)) +
+#   geom_sf(data = bavaria_shape, size = 1, color = "black", fill = "white") +
+#   geom_sf(data = rivers_important, size = 0.05, color = "lightblue")  +
+#   geom_sf(data=cities)+
+#   geom_sf_text(data=cities, aes(label = name), nudge_x = 0.5,nudge_y = -500.5,check_overlap=F) +
+#   geom_sf(aes(fill = GAMMA), color=NA) +
+# 
+#   scale_fill_gradient(low = "orange", high = "darkgreen", name="Gesamt- \nartanzahl",limits = c(0,38))+
+#   annotation_scale(location = "br", width_hint = 0.25) +
+#   geom_text_repel(mapping=aes(x=X, y=Y,label=paste(GAMMA_SF,"|",GAMMA_E),color="black"),
+#                   size=4, box.padding = unit(0.5, "lines"),color="black")+
+# 
+#   coord_sf(xlim = c(4489000,4500000),ylim= c(5569000,5578000)) +
+#   xlab("") + ylab("")+
+#   theme(legend.position="none",axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+#         panel.border = element_rect(colour = "black", fill=NA, size=1))
+# 
+# 
+# XALL <- ggarrange(ggarrange(x3,x2,ncol=2,widths = c(1, 2), labels =c("A","B"), common.legend=T,legend="right"),x1,nrow=2,labels =c("","C"),
+#                     heights =  c(1.5, 2) )
+# XALL <- annotate_figure(XALL,top ="Anzahl submerse Arten | Anzahl emerse Arten")
+# XALL
+
+
+```
+
+
+## Rankabundance plot
+```{r }
+#pdf(file = "Abb4.pdf",width=6.28)
+par(mfrow=c(2,2))
+#rankabunplot(rankabundance(PRESABS[3:96]), main="all", specnames=c(1,2,3),scale='proportion')
+rankabunplot(rankabundance(PRESABS_S[3:73]), main="submerse Arten", specnames=c(1,2,3),scale='abundance')
+rankabunplot(rankabundance(PRESABS_E[3:36]), main="emerse Arten", specnames=c(1,2,3),scale='abundance')
+#rankabunplot(rankabundance(Makroph_Lake[3:96]), main="all", specnames=c(1,2,3),scale='proportion')
+rankabunplot(rankabundance(Makroph_LakeSF[3:73]), main="submerse Arten", specnames=c(1,2,3),scale='abundance')
+rankabunplot(rankabundance(Makroph_LakeE[3:36]), main="emerse Arten", specnames=c(1,2,3),scale='abundance')
+#dev.off()
+
+```
+
+
+
+
+
+## GAM
+```{r}
+gam_r_allS <- mgcv::gam(GAMMA_SF ~ s(Fläche_log, bs = 'cr', k = 3)+s(P_log, bs = 'cr', k = 3),
+                            data=result_Chem, method="REML")
+#gam.check(gam_r_allS)
+#print(gam_r_allS)
+#plot(gam_r_allS)
+summary.gam(gam_r_allS)
+#gam_r_allS$aic
+#gam_r_allS$reml.scale
+
+# par(mfrow=c(1,2))
+# 
+# GAM1<-plot(gam_r_allS,residuals=TRUE, main = "Submerse Artenvielfalt", shade = T,seWithMean=T)
+# dev.off()
+#vis.gam(gam_r_allS,plot.type="contour",color="bw")
+######################
+
+gam_r_allE <- mgcv::gam(GAMMA_E ~ s(Chlorid_log, bs = 'cr', k = 3)+s(SiO2_log, bs = 'cr', k = 3)+s(NO3_log, bs = 'cr', k = 3)+
+                    s(NH4_log, bs = 'cr', k = 3)+s(O2_log, bs = 'cr', k = 3)+s(LF_log, bs = 'cr', k = 3), #s(Area_ha_log)+
+                    data=result_Chem,method="REML")
+
+#gam.check(gam_r_allE)
+
+#print(gam_r_allE)
+#plot(gam_r_allE)
+summary.gam(gam_r_allE)
+
+#gam_r_allE$aic
+
+# gam_r_allE <- gam(GAMMA_E ~ s(Area_ha_log, bs = 'cr', k = 3)+s(maxDepth_log, bs = 'cr', k = 3)+s(Altitude_masl_log, bs = 'cr', k = 3)+
+#                     
+#                     s(Chloride_log, bs = 'cr', k = 3)+s(Conductivity_log, bs = 'cr', k = 3)+s(N_tot_log, bs = 'cr', k = 3)+
+#                     s(SiO2_log, bs = 'cr', k = 3)+s(NO3N_log, bs = 'cr', k = 3)+s(NH4N_log, bs = 'cr', k = 3)+
+#                     s(O2_diss_log, bs = 'cr', k = 3)+s(P_tot_log, bs = 'cr', k = 3)+s(pH_log, bs = 'cr', k = 3)+
+#                     s(Temp_log, bs = 'cr', k = 3)+s(Transparency_log, bs = 'cr', k = 3), #s(Area_ha_log)+
+#                   data=result_Chem,method="REML")
+
+
+
+# par(mfrow=c(2,3))
+# GAM2<-plot(gam_r_allE,residuals=TRUE, main = "Emerse Artenvielfalt", shade = T,seWithMean=T)
+
+
+
+#print(gam_r_allE)
+#vis.gam(gam_r_allE,ticktype="detailed",color="heat",theta=-35, view=c("NO3N_log","Conductivity_log"),cond=list(x0=0.75))
+#dev.off()
+#vis.gam(gam_r_allE,view=c("NO3N_log","Conductivity_log"),plot.type="contour",color="bw")
+
+
+#BOTH
+# par(mfrow=c(1,2))
+# GAM1<-plot(gam_r_allS,residuals=TRUE, shade = T,seWithMean=T) #main = "Submerse Artenvielfalt", 
+# 
+# par(mfrow=c(1,6))
+# GAM2<-plot(gam_r_allE,residuals=TRUE, shade = T,seWithMean=T)
+
+
+
+library(voxel)
+library(gridExtra)
+
+vars <- c("Fläche_log", "P_log")
+Abb51<-map(vars, function(x){
+  p <- plotGAM(gam_r_allS, smooth.cov = x)+
+    geom_point(data = result_Chem, aes_string(y = "GAMMA_SF", x = x ), alpha = 0.2) +
+    geom_rug(data = result_Chem, aes_string(y = "GAMMA_SF", x = x ), alpha = 0.2) #plot customization goes here
+  g <- ggplotGrob(p)
+}) %>%
+{grid.arrange(grobs = (.), ncol = 2, nrow = 1)}
+
+vars2 <- c("Chlorid_log", "SiO2_log", "NO3_log", "NH4_log", "O2_log", "LF_log")
+Abb52<-map(vars2, function(x){
+  p <- plotGAM(gam_r_allE, smooth.cov = x)+
+    geom_point(data = result_Chem, aes_string(y = "GAMMA_E", x = x ), alpha = 0.2) +
+    geom_rug(data = result_Chem, aes_string(y = "GAMMA_E", x = x ), alpha = 0.2) #plot customization goes here
+  g <- ggplotGrob(p)
+}) %>%
+{grid.arrange(grobs = (.), ncol = 2, nrow = 3,labels = c("A","C"))}
+
+Abb5<-ggarrange(Abb51,Abb52, ncol = 1, nrow = 2, heights = c(1,3))
+Abb5
+#pdf(file = "Abb5.pdf",width=3.14)
+Abb5
+#dev.off()
+
+
+```
+
+
+
+
+## Rarity
+```{r}
+# library(Rarity)
+# 
+# W=rWeights(t(PRESABS_S[3:73]),wMethods = "W", rCutoff = "Gaston")
+# Irr(t(PRESABS_S[3:73]),W, abundance=F)
+# 
+# W=rWeights(spid.occ,wMethods = "W", rCutoff = "Gaston")
+# Irr(spid.occ,W, abundance=T)
+# 
+# 
+# 
+# library(remotes) # rare7
+# 
+# rareData(PRESABS_S[3:73])
+# 
+# ####
+# rankabunplot(rankabundance(PRESABS_S[3:73]), main="submerse Arten", specnames=c(1,2,3),scale='abundance')
+# rankabunplot(rankabundance(PRESABS_E[3:36]), main="emerse Arten", specnames=c(1,2,3),scale='abundance')
+```
+
+## 
+```{r}
+# resultSFm<-merge(resultSF, morph, by.x="Gewässer", by.y="Name_Makro_short")%>%
+#   filter(!Gewässer %in% c("Eibsee", "Grosser Brombachsee", "Liebensteinspeicher","Murnersee","Steinberger See"))
+# 
+# resultSFm %>% #%>% spread(YEAR,GAMMA_Chara)
+#   ggplot(aes(x=YEAR,y=meanQuant_CHARA,col=Type_simpl))+
+#   geom_path(aes(group=Gewässer)) +
+#   theme(legend.position = "bottom")+
+#   facet_wrap(~Type_simpl, scales = "free_y")#+
+#   #stat_summary(fun.data=meanQuant_CHARA) + 
+#   #geom_smooth(method='lm', formula= y~x)
+#   
+# R<-resultSFm %>%
+#   filter(!Gewässer %in% c("Eibsee", "Grosser Brombachsee", "Liebensteinspeicher","Murnersee","Steinberger See"))%>%
+#   group_by(Gewässer) %>% 
+#   filter(YEAR==min(YEAR) | YEAR==max(YEAR)) %>%
+#   arrange(YEAR, .by_group = TRUE)%>%
+#   mutate(change = (meanQuant_CHARA/lag(meanQuant_CHARA)-1)*100) %>%
+#   filter(change!="NA") %>%
+#   mutate(changeType=ifelse(change=="NaN", "nochange",
+#                        ifelse(change>0,"increase",
+#                               ifelse(change<0,"decrease",NA)))) %>%
+#   ungroup() 
+# 
+# merge(R, Chem_surf, by.x=c("Name_chem","YEAR"), by.y=c("Gewässer","YEAR"))%>% group_by(changeType) %>%
+#   summarise_if(is.numeric, mean, na.rm = TRUE)
+
+```
+
