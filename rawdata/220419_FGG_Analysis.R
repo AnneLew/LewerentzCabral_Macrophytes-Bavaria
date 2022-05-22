@@ -1,3 +1,23 @@
+# WRONG VERSION STOP
+#
+#
+#
+#
+#
+#
+# STOP
+#
+#
+#
+#
+# STOP just trying out stuff
+#
+#
+#
+#
+#
+#
+#
 ##############################################################################################################################################
 ####### MAKROPHYTE DATA ANALYSE SCRIPT FOR FGG PUBLICATION ######
 ##############################################################################################################################################
@@ -8,7 +28,6 @@ setwd("C:/Users/anl85ck/Desktop/PhD/5_Macrophytes-Bavaria/4_FGG-Project/Bavairan
 #### Load Packages ####
 #Analysis
 library(tidyverse)
-
 library(gamm4) #gamm analysis
 library(BiodiversityR) #rankabund plot
 #library(vegan) #for NMDS
@@ -60,19 +79,13 @@ Chem_table <- read.csv("./rawdata/Chem.Mean.YearDF_ALL.csv") %>% dplyr::rename(Y
 
 
 
-
-
-
-
-
-
 ##############################################################################################################################################
 #### Data preparation Macrophytes ####
 ##############################################################################################################################################
 # Calculate quantities
 Makroph_raw$Messwert <- (Makroph_raw$Messwert)^3
 
-#Selection of Lakes I am looking at
+#Cleaning
 Makroph_raw <- Makroph_raw %>%
   filter(!(Gewässer=="Chiemsee" & (YEAR==2011))) %>% filter(!(Gewässer=="Chiemsee" & YEAR==2012)) %>% # 1 plot per year -> wrong
   filter(!(Gewässer=="Chiemsee" & (YEAR==2014))) %>% filter(!(Gewässer=="Chiemsee" & (YEAR==2015))) %>%
@@ -99,17 +112,35 @@ Makroph_dataset <- merge(Makroph_dataset, Probestelle, by=NULL) #996 * 4 = 3984
 MakrophE <- Makroph_raw %>%
   filter(Form=="Em" | Form=="F-SB") %>%
   filter(str_detect(Taxon, " ")) %>%
-  filter(Taxon != "Ranunculus, aquatisch")
+  filter(Taxon != "Ranunculus, aquatisch")%>%
+  filter(!Gewässer %in% c("Eibsee", "Grosser Brombachsee", "Liebensteinspeicher","Murnersee","Steinberger See")) # no env
 
 MakrophSF <- Makroph_raw %>%
   filter(Form=="S") %>%
   filter(str_detect(Taxon, " ")) %>%
-  filter(Taxon != "Ranunculus, aquatisch")
+  filter(Taxon != "Ranunculus, aquatisch")%>%
+  filter(!Gewässer %in% c("Eibsee", "Grosser Brombachsee", "Liebensteinspeicher","Murnersee","Steinberger See")) # no env
 
 Makroph <- Makroph_raw %>%
   filter(Form!="NA") %>%
   filter(str_detect(Taxon, " ")) %>%
-  filter(Taxon != "Ranunculus, aquatisch")
+  filter(Taxon != "Ranunculus, aquatisch")%>%
+  filter(!Gewässer %in% c("Eibsee", "Grosser Brombachsee", "Liebensteinspeicher","Murnersee","Steinberger See")) # no env
+
+
+Makroph %>%
+  dplyr::select(Gewässer) %>% unique() %>% nrow()
+
+
+## Save information about species of last year ### WRONG LAST YEAR!!
+species_info <- Makroph %>%
+  group_by(Gewässer) %>%
+  ungroup() %>%
+  dplyr::select(Form,Taxon,Erscheinungsform) %>% unique() %>%
+  arrange(Taxon) %>% spread(Form, Form)
+
+Makroph %>%
+  group_by(Gewässer) %>% filter(YEAR==max(YEAR)) %>% ungroup() %>% dplyr::select(Gewässer,YEAR) %>% unique()
 
 ### PRODUCE COMMUNITY TABLE ALL
 Makroph_comm_Comb2 <- Makroph %>% group_by(Gewässer, MST_NR, DATUM, Probestelle, Taxon) %>%
@@ -151,13 +182,15 @@ Makroph_Lake_TransSF <- Makroph_comm_CombSF %>% group_by(Gewässer, MST_NR,YEAR)
   summarise_at(vars(-group_cols(),-"Probestelle"), sum, na.rm=TRUE)
 LSF<-length(Makroph_Lake_TransSF)
 Makroph_Lake_TransSF$ALPHA_SF <- specnumber(Makroph_Lake_TransSF[4:LSF])
+Makroph_Lake_TransSF$ALPHA_CHARA <- specnumber(Makroph_Lake_TransSF[c(8:22,49:52,90)])
+Makroph_Lake_TransSF$meanQuant_CHARA <- rowMeans(Makroph_Lake_TransSF[c(8:22,49:52,90)])
 
 Makroph_Lake_ALPHA_SDSF <- Makroph_Lake_TransSF %>% group_by(Gewässer, YEAR) %>% summarise(Alpha_SD_SF = sd(ALPHA_SF))
 Makroph_LakeSF <- Makroph_Lake_TransSF %>% group_by(Gewässer, YEAR) %>% mutate(N_Transects=n()) %>%
   summarise_at(vars(-group_cols(),-"MST_NR"), mean, na.rm=TRUE)
 Makroph_LakeSF <- merge(Makroph_LakeSF, Makroph_Lake_ALPHA_SDSF)
 Makroph_LakeSF$GAMMA_SF <- specnumber(Makroph_LakeSF[3:(LSF-1)])
-
+Makroph_LakeSF$GAMMA_Chara <- specnumber(Makroph_LakeSF[c(7:21,48:51,66)]) #`Chara aspera`:`Chara vulgaris`& Nitella, Nitellopsis
 
 
 ### Community table emergent species
@@ -185,14 +218,21 @@ Makroph_LakeE$GAMMA_E <- specnumber(Makroph_LakeE[3:(LE-1)])
 
 
 ### Combine Results
-resultALL <- Makroph_Lake %>% dplyr::select(Gewässer, YEAR, GAMMA)
-resultSF <- Makroph_LakeSF %>% dplyr::select(Gewässer, YEAR, GAMMA_SF) #N_Transects, ALPHA_SF, Alpha_SD_SF,
+resultALL <- Makroph_Lake %>% dplyr::select(Gewässer, YEAR, ALPHA,GAMMA)
+resultSF <- Makroph_LakeSF %>% dplyr::select(Gewässer, YEAR, ALPHA_SF,ALPHA_CHARA,GAMMA_SF,GAMMA_Chara,meanQuant_CHARA) #N_Transects, ALPHA_SF, Alpha_SD_SF,
 resultE <- Makroph_LakeE %>% dplyr::select(Gewässer,YEAR,  GAMMA_E) #ALPHA_E, Alpha_SD_E,
-result <- merge(resultSF, resultE, by=c("Gewässer","YEAR"))
-result <- merge(result, resultALL, by=c("Gewässer","YEAR"))
+result2 <- merge(resultSF, resultE, by=c("Gewässer","YEAR"))
+result2 <- merge(result2, resultALL, by=c("Gewässer","YEAR"))
 LAKES <- result$Gewässer
 
-result <- merge(result, morph, by.x="Gewässer", by.y="Name_Makro_short")
+result <- merge(result2, morph, by.x="Gewässer", by.y="Name_Makro_short")
+
+result %>% group_by(Gewässer) %>% filter(YEAR == max(YEAR)) %>% ungroup() %>%
+  filter(!Gewässer %in% c("Eibsee", "Grosser Brombachsee", "Liebensteinspeicher","Murnersee","Steinberger See")) %>%
+  group_by(Nat.artifi) %>% summarise(GAMMA_SFmean = mean(GAMMA_SF),
+                                     GAMMA_Chara = mean(GAMMA_Chara),
+                                     GAMMA_E = mean(GAMMA_E))
+
 
 
 ##############################################################################################################################################
@@ -252,18 +292,18 @@ Lakes_Type_centers <- cbind(Lakes_Type, st_coordinates(st_centroid(Lakes_Type$ge
 
 #### RARE SPECIES DATASET | ALL
 Makroph_Lake <- merge(Makroph_Lake, Fin_dataset, by=c("Gewässer", "YEAR"))
-Makroph_Lake_h <-Makroph_Lake %>% dplyr::select("Acorus calamus":"Zannichellia palustris") %>%
+Makroph_Lake_h <-Makroph_Lake %>% dplyr::select("Callitriche cophocarpa":"Zannichellia palustris") %>%
   select_if(colSums(., na.rm=T) != 0)
 Makroph_Lake <- cbind(Makroph_Lake[1:2], Makroph_Lake_h,Makroph_Lake[125:128])
 PRESABS <- cbind(Makroph_Lake[,1:2], apply(Makroph_Lake[,3:96], 2, function(x) ifelse(x > 0.0, 1.0, x)))
 
-SPECIESNUMBER_ALL <- PRESABS %>% dplyr::select(`Acorus calamus`:"Zannichellia palustris") %>% colSums()
+SPECIESNUMBER_ALL <- PRESABS %>% dplyr::select(3:96) %>% colSums()
 sort(SPECIESNUMBER_ALL)
 sum(SPECIESNUMBER_ALL==1)
 
 boxplot(SPECIESNUMBER_ALL)
 
-RARE <- PRESABS %>% dplyr::select(`Alisma plantago-aquatica`:"Zannichellia palustris") %>% select_if(colSums(.)<=3 )
+RARE <- PRESABS %>% dplyr::select(3:96) %>% select_if(colSums(.)<=3 )
 
 RARE <- cbind(Makroph_Lake[,1:2], RARE)
 RARE$RARESPECIES <- specnumber(RARE[3:52])
@@ -304,15 +344,6 @@ sum(SPECIESNUMBER_E==1)
 
 
 
-## Save information about species of last year ### WRONG LAST YEAR!!
-species_info <- Makroph %>%
-  group_by(Gewässer) %>%
-  ungroup() %>%
-  dplyr::select(Form,Taxon,Erscheinungsform) %>% unique() %>%
-  arrange(Taxon) %>% spread(Form, Form)
-
-
-
 usethis::use_data(Makroph_Lake,overwrite = TRUE)
 usethis::use_data(Makroph_LakeSF,overwrite = TRUE)
 usethis::use_data(Makroph_LakeE,overwrite = TRUE)
@@ -328,7 +359,8 @@ usethis::use_data(lakes_bavaria,overwrite = TRUE)
 usethis::use_data(rivers_important,overwrite = TRUE)
 usethis::use_data(cities,overwrite = TRUE)
 
+
+
 usethis::use_data(species_info,overwrite = TRUE)
 
-
-
+usethis::use_data(resultSF,overwrite = TRUE)
